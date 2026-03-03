@@ -1,0 +1,20 @@
+Name: api
+Addr: 0.0.0.0:8888
+FileBasePath: ./test_data
+
+MySql:
+  DataSource: "root:123456@tcp(mysql:3306)/mpdb?charset=utf8mb4&parseTime=True&loc=Local"
+
+Redis:
+  Addr: "redis:6379"
+
+jwt:
+  secret: awa
+  expire: 2h
+
+Monitor:
+  Type: "file"
+  maxRecord: 100
+  File:
+    Path: "./data"
+    StudTime: 300

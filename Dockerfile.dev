@@ -1,0 +1,7 @@
+FROM golang:1.26-alpine
+
+WORKDIR /app
+
+RUN apk add --no-cache git
+
+CMD ["go", "run", "main.go", "-f", "./etc/local/api.yaml"]
