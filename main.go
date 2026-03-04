@@ -42,7 +42,7 @@ func main() {
 
 	app.InitErrorHandler()
 
-	svcCtx, err := svc.NewServiceContext(cfg)
+	svcCtx, err := svc.NewServiceContext(rootCtx, cfg)
 	if err != nil {
 		panic(err)
 	}

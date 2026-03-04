@@ -15,6 +15,7 @@ import (
 
 type ServiceContext struct {
 	Config config.Config
+	ctx    context.Context
 
 	// 基础设施
 	JWT        *jwt.JWT
@@ -26,7 +27,7 @@ type ServiceContext struct {
 	LoggingMid *middleware.LoggingMid
 }
 
-func NewServiceContext(c config.Config) (*ServiceContext, error) {
+func NewServiceContext(ctx context.Context, c config.Config) (*ServiceContext, error) {
 	db, err := gorm.Open(mysql.Open(c.MySql.DataSource), &gorm.Config{}) // 这就是进行组装了
 	if err != nil {
 		return nil, err
@@ -38,19 +39,20 @@ func NewServiceContext(c config.Config) (*ServiceContext, error) {
 	)
 
 	res := &ServiceContext{
+		ctx:        ctx,
 		Config:     c,
 		UsersModel: model.NewUsersModel(db),
 		JWT:        jwtTool,
 		JwtMid:     middleware.NewJWTMid(jwtTool),
 		LoggingMid: middleware.NewLoggingMid(),
+		AdminMid:   middleware.NewAdminMid(),
 	}
 
 	return res, initServer(res)
 }
 
 func initServer(svc *ServiceContext) error {
-	ctx := context.Background()
-	if err := initSystemUser(ctx, svc); err != nil {
+	if err := initSystemUser(svc.ctx, svc); err != nil {
 		return err
 	}
 	return nil
@@ -68,7 +70,7 @@ func initSystemUser(ctx context.Context, svc *ServiceContext) error {
 	}
 
 	// 防止重复 root
-	u, err := svc.UsersModel.FindByName("root")
+	u, err := svc.UsersModel.FindByID("20001")
 	if err == nil && u != nil {
 		return nil
 	}
@@ -79,8 +81,8 @@ func initSystemUser(ctx context.Context, svc *ServiceContext) error {
 	}
 
 	return svc.UsersModel.Insert(ctx, &model.Users{
+		Id:       "20001",
 		Name:     "root",
-		Phone:    "123456789",
 		Password: string(pwd),
 		Status:   model.UserStatusNormal,
 		IsSystem: model.IsSystemUser,

@@ -6,9 +6,8 @@ type StateKV struct {
 }
 
 type User struct {
-	Id       int    `json:"id;primary_key"`
+	Id       string `json:"id;primary_key"`
 	Name     string `json:"name"`
-	Phone    string `json:"phone"`
 	Password string `json:"password"`
 	Status   int64  `json:"status"`
 	IsSystem int64  `json:"is_system"`
@@ -28,31 +27,31 @@ type LoginReq struct {
 
 type LoginResp struct {
 	Token    string `json:"token"`
-	Id       int    `json:"id"`
+	Id       string `json:"id"`
 	Name     string `json:"name"`
 	Status   int64  `json:"status"`
 	IsSystem int64  `json:"is_system"`
 }
 
 type RegisterReq struct {
+	Id        string `json:"id"`
 	Name      string `json:"name"`
-	Phone     string `json:"phone"`
 	Password  string `json:"password"`
 	Password2 string `json:"password2"`
 }
 
 type RegisterResp struct {
 	Token  string `json:"token"`
-	Id     int    `json:"id"`
+	Id     string `json:"id"`
 	Name   string `json:"name"`
 	Status int    `json:"status"`
 }
 
 type UserListReq struct {
-	Ids   []int  `json:"ids,omitempty" query:"ids"`
-	Name  string `json:"name,omitempty" query:"name"`
-	Page  int    `json:"page,omitempty" query:"page"`
-	Count int    `json:"count,omitempty" query:"count"`
+	Ids   []string `json:"ids,omitempty" query:"ids"`
+	Name  string   `json:"name,omitempty" query:"name"`
+	Page  int      `json:"page,omitempty" query:"page"`
+	Count int      `json:"count,omitempty" query:"count"`
 }
 
 type UserListResp struct {
@@ -61,7 +60,7 @@ type UserListResp struct {
 }
 
 type UpPasswordReq struct {
-	Id     int    `json:"id"`
+	Id     string `json:"id"`
 	OldPwd string `json:"oldPwd"`
 	NewPwd string `json:"newPwd"`
 }

@@ -19,6 +19,9 @@ func (m *LoggingMid) Handler(ctx *gin.Context) {
 	reqCtx = logx.SetTraceID(reqCtx, "") // 从 logx 工具库中生成关于这条记录的 TraceID
 	ctx.Request = ctx.Request.WithContext(reqCtx)
 
+	traceID := logx.GetTraceID(reqCtx)
+	ctx.Writer.Header().Set("X-Trace-Id", traceID)
+
 	start := time.Now() // 记录请求时间
 
 	// 2. 放行请求
@@ -38,4 +41,5 @@ func (m *LoggingMid) Handler(ctx *gin.Context) {
 			"ip":       ctx.ClientIP(),
 		},
 	)
+
 }

@@ -43,7 +43,7 @@ func NewUser(usersModel model.UsersModel) User {
 }
 
 func (l *user) Login(ctx context.Context, req *domain.LoginReq) (resp *domain.LoginResp, err error) {
-	userEntity, err := l.usersModel.FindByNameOrPhone(req.Username)
+	userEntity, err := l.usersModel.FindByID(req.Username)
 	if err != nil {
 		logx.Errors(ctx, "user", "login_failed", logx.Fields{
 			"username": req.Username,
@@ -75,7 +75,7 @@ func (l *user) Login(ctx context.Context, req *domain.LoginReq) (resp *domain.Lo
 
 func (l *user) Register(ctx context.Context, req *domain.RegisterReq) (*domain.RegisterResp, error) {
 	// 先检查有没有重复的用户或者用户名
-	userEntity, err := l.usersModel.FindByName(req.Name)
+	userEntity, err := l.usersModel.FindByID(req.Id)
 	if err != nil {
 		// 用户不存在是正常情况，继续走注册
 		if !errors.Is(err, model.ErrNotFound) {
@@ -93,8 +93,8 @@ func (l *user) Register(ctx context.Context, req *domain.RegisterReq) (*domain.R
 
 	// 设置新用户信息，并且插入，若有报错则记录
 	newUser := &domain.User{
+		Id:       req.Id,
 		Name:     req.Name,
-		Phone:    req.Phone,
 		Password: req.Password,
 		Status:   int64(model.UserStatusNormal),
 		IsSystem: 0,
@@ -122,7 +122,7 @@ func (l *user) Register(ctx context.Context, req *domain.RegisterReq) (*domain.R
 
 func (l *user) Create(ctx context.Context, req *domain.User) error {
 	// 查表并创建用户
-	userEntity, err := l.usersModel.FindByName(req.Name)
+	userEntity, err := l.usersModel.FindByID(req.Id)
 	if err != nil {
 		logx.Errors(ctx, "admin", "admin_create_user_failed", logx.Fields{
 			"stage": "check_name",
@@ -160,8 +160,8 @@ func (l *user) createUser(ctx context.Context, req *domain.User, from string) er
 	}
 
 	if err := l.usersModel.Insert(ctx, &model.Users{
+		Id:       req.Id,
 		Name:     req.Name,
-		Phone:    req.Phone,
 		Password: string(passwordHash),
 		Status:   model.UserStatus(req.Status),
 		IsSystem: func() int64 {

@@ -4,11 +4,37 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="1a988dbe-9c88-44dc-9f49-07dedad88c8e" name="更改" comment="框架" />
+    <list default="true" id="1a988dbe-9c88-44dc-9f49-07dedad88c8e" name="更改" comment="优化用户逻辑，扩充数据库与数据模型">
+      <change afterPath="$PROJECT_DIR$/internal/model/contestrecordmodel.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/model/contestrecordtype.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/model/dailytrainingstatsmodel.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/model/dailytrainingstatstype.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/pkg/cpStatus/cpStatus.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/docker-compose.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/etc/local/api.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/etc/local/api.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/app/error.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/app/error.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/domain/domain.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/domain/domain.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/handler/api/handler.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/handler/api/handler.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/logic/user.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/logic/user.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/middleware/logging.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/middleware/logging.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/model/usersmodel.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/model/usersmodel.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/model/userstype.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/model/userstype.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/svc/servicecontext.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/svc/servicecontext.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/main.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sql/init.sql" beforeDir="false" afterPath="$PROJECT_DIR$/sql/init.sql" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Go File" />
+      </list>
+    </option>
   </component>
   <component name="GOROOT" url="file://$USER_HOME$/sdk/go1.26.0" />
   <component name="Git.Settings">
@@ -22,7 +48,7 @@
 }</component>
   <component name="GithubPullRequestsUISettings">{
   &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/ZvezdyUTO/ACM-Training-Agent&quot;,
+    &quot;url&quot;: &quot;https://github.com/ZvezdyUTO/XCPC-Training-Agent.git&quot;,
     &quot;accountId&quot;: &quot;ffd14090-ceb6-4125-95ad-e081a36c5abe&quot;
   }
 }</component>
@@ -44,6 +70,7 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
+    "DefaultGoTemplateProperty": "Go File",
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "RunOnceActivity.GoLinterPluginOnboardingV2": "true",
     "RunOnceActivity.GoLinterPluginStorageMigration": "true",
@@ -89,7 +116,8 @@
       <path value="$PROJECT_DIR$/micro-pagode" />
     </ignored-roots>
     <MESSAGE value="框架" />
-    <option name="LAST_COMMIT_MESSAGE" value="框架" />
+    <MESSAGE value="优化用户逻辑，扩充数据库与数据模型" />
+    <option name="LAST_COMMIT_MESSAGE" value="优化用户逻辑，扩充数据库与数据模型" />
   </component>
   <component name="VgoModernizerVersionTracker">
     <upgrades>

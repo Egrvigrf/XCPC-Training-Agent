@@ -15,8 +15,7 @@ type (
 		List(ctx context.Context, req *domain.UserListReq) ([]*Users, int64, error)
 		Update(ctx context.Context, data *Users) error
 		Delete(ctx context.Context, id int64) error
-		FindByName(name string) (*Users, error)
-		FindByNameOrPhone(v string) (*Users, error)
+		FindByID(id string) (*Users, error)
 	}
 
 	defaultUsers struct {
@@ -78,9 +77,9 @@ func (m *defaultUsers) Delete(ctx context.Context, id int64) error {
 	return m.db.Delete(&Users{}, "id = ?", id).Error
 }
 
-func (m *defaultUsers) FindByName(name string) (*Users, error) {
+func (m *defaultUsers) FindByID(id string) (*Users, error) {
 	var res Users
-	err := m.db.Where("name =?", name).First(&res).Error
+	err := m.db.Where("id =?", id).First(&res).Error
 
 	switch err {
 	case nil:
@@ -91,20 +90,6 @@ func (m *defaultUsers) FindByName(name string) (*Users, error) {
 		return nil, err
 	}
 
-}
-
-func (m *defaultUsers) FindByNameOrPhone(v string) (*Users, error) {
-	var res Users
-	err := m.db.Where("name =? OR phone = ?", v, v).First(&res).Error
-
-	switch err {
-	case nil:
-		return &res, nil
-	case gorm.ErrRecordNotFound:
-		return nil, nil
-	default:
-		return nil, err
-	}
 }
 
 func (m *defaultUsers) FindOne(ctx context.Context, id int64) (*Users, error) {
