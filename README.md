@@ -48,7 +48,7 @@
 - `internal/logic`：业务层（用户逻辑/数据管理）
 - `internal/model`：数据库访问
 - `internal/crawler`：Python 爬虫调用封装
-- `sql/init.sql`：建表初始化
+- `sql/init.sql`：建表初始化  
 
 ---
 
@@ -59,3 +59,22 @@
 ```bash
 docker compose up -d
 ```
+
+### 调用示例                  
+
+1. 登录 root
+curl -s http://localhost:8080/v1/user/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"20001","password":"000000"}'
+
+2. 批量创建用户（把 token 填到 Authorization）
+curl -s http://localhost:8080/v1/admin/users/create \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer <TOKEN>' \
+  -d '{"users":[{"id":"示例学号","name":"示例姓名","password":"默认密码","cf_handle":"示例codeforcesID","ac_handle":"示例atCoderID"}]}'
+
+3. 手动同步区间（只传 student_id）
+curl -s http://localhost:8080/v1/admin/op/training/sync \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer <TOKEN>' \
+  -d '{"students":[{"student_id":"示例学号"}],"from":"2026-03-01T00:00:00+08:00","to":"2026-03-07T23:59:59+08:00"}'
