@@ -1,80 +1,173 @@
 # XCPC-Training-Agent
 
-一个给队伍用的训练数据管理服务：把集训队队员在 Codeforces / AtCoder 上的训练与比赛记录统一抓取、落库，然后提供一套 API 做查询/管理，并且支持每天自动同步。
+一个专为 XCPC 集训队设计的智能化训练数据管理与分析平台。它不仅能自动化抓取 Codeforces / AtCoder 数据，更能通过内置的 AI Agent 像教练一样分析队员的训练走势。
 
 ---
 
 ## 你能用它做什么
 
-- **账号体系 + JWT 鉴权**
-  - 支持登录普通用户自助登录、查看信息、改密码
-  - 管理员接口有单独的权限保护，只有管理员有资格调度爬虫和创建用户
+- **智能 Agent 分析系统**
+  - 事件循环控制：AI 不只是生成文本，而是通过观察 (Observation) -> 思考 (Thought) -> 行动 (Action) 的循环进行任务调度。
+  - 工具自动化调用：Agent 可自主决定何时调用数据库查询接口、统计函数或爬虫，完成复杂的横向/纵向对比分析。
 
-- **训练数据同步**
-  - 支持管理员按时间区间批爬取比赛数据并且导入数据库（请不要频繁调度爬虫，以免给服务器造成过大压力导致被风控）
-  - 同步逻辑为“覆盖式同步”，便于修复历史数据
+- **全自动数据同步**
+  - 多平台支持：统一抓取 Codeforces 与 AtCoder 的训练/比赛记录。
+  - T+1 自动任务：按天自动同步数据，支持管理员手动触发区间覆盖同步。
 
-- **每日自动任务**
-  - 按 T+1 模式自动同步“昨天”的数据
+- **完善的权限体系**
+  - 基于 JWT 的鉴权机制，区分普通队员（查阅、改密）与管理员（调度爬虫、管理用户、调用 Agent）。
 
-- **容器化**
-  - docker-compose 一键起 MySQL / Redis / app
-  - 初始化 SQL 自动执行
+- **容器化一键部署**
+  - 基于 Docker Compose 编排，集成 MySQL、Redis 环境，支持 SQL 自动初始化。
 
 ---
 
 ## 未来希望增加的功能
 
-- 数据计算和排名
-
-- agent 分析训练数据
-
+- 拓展 tool, skill
 - 可视化前端
 
 ---
 
-## 技术栈 / 结构
+## 技术栈
 
-技术栈：
-- Go + Gin（HTTP API）
-- GORM（MySQL）
-- Redis（目前用于基础依赖，后续可扩展缓存/锁）
-- Python 爬虫（以子进程方式被 Go 调用，结果 JSON 回传）
-- gocron 任务调度
+* **Go + Gin**：提供 RESTful API
+* **LLM + Tool-based Agent 框架**：基于事件循环的工具调用式智能分析系统
+* **GORM + MySQL**：数据持久化
+* **gocron**：定时任务调度
+* **Docker Compose**：服务编排与部署
+* **Python 爬虫**：独立子进程抓取 CF / AtCoder 数据，JSON 回传
 
-目录简略说明：
-- `internal/handler/api`：HTTP 层
-- `internal/handler/task`：定时任务
-- `internal/logic`：业务层（用户逻辑/数据管理）
-- `internal/model`：数据库访问
-- `internal/crawler`：Python 爬虫调用封装
-- `sql/init.sql`：建表初始化  
+---
+
+## 项目结构
+
+总体架构：**Handler → Logic → Model**
+
+```
+internal/
+├── handler/
+│   ├── api/              # HTTP 接口层
+│   └── task/             # 定时任务入口
+│
+├── logic/                # 业务核心层
+│   ├── user.go           # 用户逻辑（登录、注册、权限、批量建号）
+│   │
+│   ├── student_data/     # 训练数据导入相关逻辑
+│   │
+│   ├── agent_logic.go    # Agent 调度入口
+│   └── agent/            # Agent 框架实现
+│       ├── controller.go # 事件循环核心
+│       ├── registry.go   # 工具注册与调用
+│       ├── prompt.go     # Prompt 组装
+│       ├── types.go      # 协议定义
+│       └── tools/        # 具体分析工具（训练统计 / rating 统计）
+│
+├── model/                # 数据访问层
+├── crawler/              # Python 爬虫调用封装
+sql/
+└── init.sql              # 数据库初始化
+```
 
 ---
 
 ## 快速开始（Docker）
 
-### 启动依赖与服务
+### 1. 配置 LLM 环境变量
+
+在启动服务前，你需要准备好 LLM 的访问凭证。默认支持 **阿里云百炼 (DashScope)** 及其他兼容 OpenAI 接口协议的服务。
+
+请在 `docker-compose.yaml` 中填写你的配置：
+
+* **DASHSCOPE_API_KEY**: 你的 API Key（例如：`sk-xxxx...`）。
+* **DASHSCOPE_BASE_URL**: 接口基础地址（百炼通常为 `https://dashscope.aliyuncs.com/compatible-mode/v1`）。
+
+### 2. 启动依赖与服务
+
+确保当前目录下存在 `sql/init.sql` 脚本，随后运行：
 
 ```bash
 docker compose up -d
 ```
 
-### 调用示例                  
+### 3. 服务编排参考 (`docker-compose.yaml`)
 
-1. 登录 root
+```yaml
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: aATA-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: aATAdb
+      MYSQL_ROOT_HOST: "%"
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: aATA-app
+    environment:
+      # === 需自行填写部分 ===
+      - DASHSCOPE_API_KEY=<Token>
+      - DASHSCOPE_BASE_URL=<URL>
+      # ====================
+      - AGENT_TEST=1
+    ports:
+      - "8888:8888"
+    volumes:
+      - .:/app
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: always
+
+volumes:
+  mysql_data:
+
+```
+
+---
+
+## 调用示例                  
+
+1. 登录 root，获取管理员 token
+```
 curl -s http://localhost:8080/v1/user/login \
   -H 'Content-Type: application/json' \
   -d '{"username":"20001","password":"000000"}'
+```
 
 2. 批量创建用户（把 token 填到 Authorization）
+```
 curl -s http://localhost:8080/v1/admin/users/create \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer <TOKEN>' \
   -d '{"users":[{"id":"示例学号","name":"示例姓名","password":"默认密码","cf_handle":"示例codeforcesID","ac_handle":"示例atCoderID"}]}'
+```
 
 3. 手动同步区间（只传 student_id）
+```
 curl -s http://localhost:8080/v1/admin/op/training/sync \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer <TOKEN>' \
   -d '{"students":[{"student_id":"示例学号"}],"from":"2026-03-01T00:00:00+08:00","to":"2026-03-07T23:59:59+08:00"}'
+```
+
+ 4) 调用 Agent 进行分析，此处示例分析某位学生的表现
+```
+curl -s http://localhost:8080/v1/admin/agent/task/run \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer <TOKEN>' \
+  -d '{ "task": "观察学号为<示例学号>的学生在 2025 年的训练情况，可以从比赛数据和做题数据中进行分析" }'
+```
