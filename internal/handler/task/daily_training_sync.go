@@ -1,7 +1,7 @@
 package task
 
 import (
-	"aATA/internal/logic"
+	"aATA/internal/logic/student_data"
 	"aATA/internal/svc"
 	"aATA/pkg/logx"
 	"context"
@@ -12,21 +12,23 @@ import (
 
 type DailyTrainingSync struct {
 	svc      *svc.ServiceContext
-	training logic.TrainingLogic
+	training student_data.TrainingLogic
 	loc      *time.Location
+	compute  student_data.ComputeLogic
 }
 
 func NewDailyTrainingSync(svc *svc.ServiceContext, loc *time.Location) *DailyTrainingSync {
 	return &DailyTrainingSync{
 		svc: svc,
-		training: logic.NewTrainingLogic(
+		training: student_data.NewTrainingLogic(
 			svc.UsersModel,
 			svc.ContestModel,
 			svc.DailyModel,
 			svc.Crawler,
 			loc,
 		),
-		loc: loc,
+		compute: student_data.NewComputeLogic(svc, loc),
+		loc:     loc,
 	}
 }
 
@@ -42,7 +44,7 @@ func (s *DailyTrainingSync) Register(ctx context.Context) {
 		defer cancel()
 
 		// 运行定时任务
-		if err := s.runOnce(runCtx); err != nil {
+		if err := s.getData(runCtx); err != nil {
 			logx.Errors(runCtx, "task", "daily_training_sync_failed", logx.Fields{
 				"error": err.Error(),
 			})
@@ -53,6 +55,18 @@ func (s *DailyTrainingSync) Register(ctx context.Context) {
 // Stop 退出时收尾
 func (s *DailyTrainingSync) Stop(ctx context.Context) {}
 
-func (s *DailyTrainingSync) runOnce(ctx context.Context) error {
-	return s.training.SyncAllUsersYesterday(ctx)
+func (s *DailyTrainingSync) getData(ctx context.Context) error {
+	// 先同步昨日训练数据
+	if err := s.training.SyncAllUsersYesterday(ctx); err != nil {
+		return err
+	}
+
+	// 计算昨日能力快照
+	yesterday := time.Now().In(s.loc).AddDate(0, 0, -1)
+
+	if err := s.compute.RecomputeAll(ctx, yesterday); err != nil {
+		return err
+	}
+
+	return nil
 }

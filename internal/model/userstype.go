@@ -34,9 +34,12 @@ type Users struct {
 
 func (m *Users) ToDomainUser() *domain.User {
 	return &domain.User{
-		Id:     m.Id,
-		Name:   m.Name,
-		Status: int64(m.Status),
+		Id:       m.Id,
+		Name:     m.Name,
+		Status:   int64(m.Status),
+		CFHandle: m.CFHandle,
+		ACHandle: m.ACHandle,
+		IsSystem: m.IsSystem,
 	}
 }
 

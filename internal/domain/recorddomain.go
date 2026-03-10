@@ -3,7 +3,7 @@ package domain
 import "time"
 
 type SyncStudentItem struct {
-	StudentID string `json:"student_id" binding:"required"`
+	StudentID string `json:"id" binding:"required"`
 }
 
 type AdminSyncTrainingReq struct {

@@ -1,22 +1,22 @@
 package api
 
 import (
+	"aATA/internal/logic/student_data"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
 
 	"aATA/internal/domain"
-	"aATA/internal/logic"
 	"aATA/internal/svc"
 	"aATA/pkg/httpx"
 )
 
 type AdminOperator struct {
 	svcCtx   *svc.ServiceContext
-	training logic.TrainingLogic
+	training student_data.TrainingLogic
 }
 
-func NewAdminOperator(svcCtx *svc.ServiceContext, training logic.TrainingLogic) *AdminOperator {
+func NewAdminOperator(svcCtx *svc.ServiceContext, training student_data.TrainingLogic) *AdminOperator {
 	return &AdminOperator{
 		svcCtx:   svcCtx,
 		training: training,

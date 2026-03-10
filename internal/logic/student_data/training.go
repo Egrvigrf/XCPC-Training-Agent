@@ -1,4 +1,4 @@
-package logic
+package student_data
 
 import (
 	"aATA/internal/crawler"

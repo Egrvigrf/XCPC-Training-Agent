@@ -3,6 +3,9 @@ package svc
 import (
 	"aATA/internal/config"
 	"aATA/internal/crawler"
+	"aATA/internal/llm"
+	"aATA/internal/logic/agent"
+	"aATA/internal/logic/agent/tools"
 	"aATA/internal/middleware"
 	"aATA/internal/model"
 	"aATA/pkg/encrypt"
@@ -19,16 +22,23 @@ type ServiceContext struct {
 	ctx    context.Context
 
 	// 基础设施
-	JWT          *jwt.JWT
-	UsersModel   model.UsersModel
-	ContestModel model.ContestRecordModel
-	DailyModel   model.DailyTrainingStatsModel
-	Crawler      crawler.Crawler
+	JWT                      *jwt.JWT
+	UsersModel               model.UsersModel
+	ContestModel             model.ContestRecordModel
+	DailyModel               model.DailyTrainingStatsModel
+	Crawler                  crawler.Crawler
+	AbilityModel             model.UserAbilitySnapshotModel
+	TeamCacheModel           model.TeamMetricCacheModel
+	LLMClient                llm.Client
+	GetUserTrainingRangeTool agent.Tool
 
 	// Middleware
 	JwtMid     *middleware.JWTMid
 	AdminMid   *middleware.AdminMid
 	LoggingMid *middleware.LoggingMid
+
+	// AgentTools
+	EchoTool agent.Tool
 }
 
 func NewServiceContext(ctx context.Context, c config.Config) (*ServiceContext, error) {
@@ -47,17 +57,24 @@ func NewServiceContext(ctx context.Context, c config.Config) (*ServiceContext, e
 		PythonBin:  "python3",
 	}
 
+	llmClient := llm.NewAliyunQwenClient("glm-4.7")
+	echoTool := tools.NewEchoTool()
+
 	res := &ServiceContext{
-		ctx:          ctx,
-		Config:       c,
-		UsersModel:   model.NewUsersModel(db),
-		ContestModel: model.NewContestRecordModel(db),
-		DailyModel:   model.NewDailyTrainingStatsModel(db),
-		JWT:          jwtTool,
-		JwtMid:       middleware.NewJWTMid(jwtTool),
-		LoggingMid:   middleware.NewLoggingMid(),
-		AdminMid:     middleware.NewAdminMid(),
-		Crawler:      craw,
+		ctx:            ctx,
+		Config:         c,
+		UsersModel:     model.NewUsersModel(db),
+		ContestModel:   model.NewContestRecordModel(db),
+		DailyModel:     model.NewDailyTrainingStatsModel(db),
+		JWT:            jwtTool,
+		JwtMid:         middleware.NewJWTMid(jwtTool),
+		LoggingMid:     middleware.NewLoggingMid(),
+		AdminMid:       middleware.NewAdminMid(),
+		Crawler:        craw,
+		AbilityModel:   model.NewUserAbilitySnapshotModel(db),
+		TeamCacheModel: model.NewTeamMetricCacheModel(db),
+		LLMClient:      llmClient,
+		EchoTool:       echoTool,
 	}
 
 	return res, initServer(res)

@@ -4,20 +4,43 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="1a988dbe-9c88-44dc-9f49-07dedad88c8e" name="更改" comment="优化用户逻辑，扩充数据库与数据模型">
-      <change afterPath="$PROJECT_DIR$/internal/handler/task/daily_training_sync.go" afterDir="false" />
+    <list default="true" id="1a988dbe-9c88-44dc-9f49-07dedad88c8e" name="更改" comment="优化结构，新增自动爬取昨日记录、批量创建学生功能">
+      <change afterPath="$PROJECT_DIR$/internal/domain/agentdomain.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/handler/api/adminagent.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/llm/client.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/llm/llm.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/logic/agent/controller.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/logic/agent/prompt.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/logic/agent/registry.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/logic/agent/tool.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/logic/agent/tools/fake_echo_tool.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/logic/agent/types.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/logic/agent_logic.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/logic/student_data/compute.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/model/teammetriccachemodel.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/model/teammetriccachetype.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/model/userabilitysnapshotmodel.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/internal/model/userabilitysnapshottype.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/crawler/python_crawler.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/crawler/python_crawler.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docker-compose.test.yml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/docker-compose.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/etc/local/api.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/etc/local/api.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/go.sum" beforeDir="false" afterPath="$PROJECT_DIR$/go.sum" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/internal/domain/recorddomain.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/domain/recorddomain.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/domain/userdomain.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/domain/userdomain.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/internal/handler/api/adminoperator.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/handler/api/adminoperator.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/internal/handler/api/adminuser.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/handler/api/adminuser.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/internal/handler/api/router.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/handler/api/router.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/internal/handler/api/userpublic.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/handler/api/userpublic.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/handler/task/runner.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/handler/task/runner.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/logic/training.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/logic/training.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/logic/user.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/logic/user.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/handler/api/userself.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/handler/api/userself.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/handler/task/daily_training_sync.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/handler/task/daily_training_sync.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/logic/record.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/logic/timetil.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/logic/student_data/timetil.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/logic/training.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/logic/student_data/training.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/logic/training_test.go" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/internal/model/userstype.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/model/userstype.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/svc/servicecontext.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/svc/servicecontext.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sql/init.sql" beforeDir="false" afterPath="$PROJECT_DIR$/sql/init.sql" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -55,7 +78,6 @@
   </component>
   <component name="ProblemsViewState">
     <option name="selectedTabId" value="CurrentFile" />
-    <option name="showPreview" value="true" />
   </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 0
@@ -65,35 +87,81 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;DefaultGoTemplateProperty&quot;: &quot;Go File&quot;,
-    &quot;Go 测试.aATA/internal/crawler 中的 TestPythonCrawler_FetchRange.executor&quot;: &quot;Run&quot;,
-    &quot;Go 测试.aATA/internal/logic 中的 TestTrainingLogic_RealSync.executor&quot;: &quot;Run&quot;,
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.GoLinterPluginOnboardingV2&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.GoLinterPluginStorageMigration&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.go.analysis.ui.options.defaults&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.go.formatter.settings.were.checked&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.go.modules.go.list.on.any.changes.was.set&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/home/zvezdyuto/GolandProjects/agentAcmTrainingAnalysis&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;onboarding.tips.debug.path&quot;: &quot;/home/zvezdyuto/GolandProjects/agentAcmTrainingAnalysis/main.go&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "DefaultGoTemplateProperty": "Go File",
+    "Go 测试.aATA/internal/agent/tools 中的 TestGetUserTrainingRangeTool_OK.executor": "Run",
+    "Go 测试.aATA/internal/agent/tools 中的 TestGetUserTrainingRangeTool_RealDB.executor": "Run",
+    "Go 测试.aATA/internal/agent/tools 中的 TestGetUserTrainingRangeTool_Validate.executor": "Run",
+    "Go 测试.aATA/internal/crawler 中的 TestPythonCrawler_FetchRange.executor": "Run",
+    "Go 测试.aATA/internal/logic 中的 TestTrainingLogic_RealSync.executor": "Run",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.GoLinterPluginOnboardingV2": "true",
+    "RunOnceActivity.GoLinterPluginStorageMigration": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.go.analysis.ui.options.defaults": "true",
+    "RunOnceActivity.go.formatter.settings.were.checked": "true",
+    "RunOnceActivity.go.modules.go.list.on.any.changes.was.set": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "last_opened_file_path": "/home/zvezdyuto/GolandProjects/agentAcmTrainingAnalysis",
+    "node.js.detected.package.eslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "onboarding.tips.debug.path": "/home/zvezdyuto/GolandProjects/agentAcmTrainingAnalysis/main.go"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$" />
     </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/internal/logic" />
+      <recent name="$PROJECT_DIR$/internal/logic/agent" />
+      <recent name="$PROJECT_DIR$/internal/llm" />
+      <recent name="$PROJECT_DIR$/internal/logic/user" />
+      <recent name="$PROJECT_DIR$/internal/logic/student_data" />
+    </key>
   </component>
-  <component name="RunManager" selected="Go 测试.aATA/internal/logic 中的 TestTrainingLogic_RealSync">
+  <component name="RunManager" selected="Go 测试.aATA/internal/agent/tools 中的 TestGetUserTrainingRangeTool_RealDB">
+    <configuration name="aATA/internal/agent/tools 中的 TestGetUserTrainingRangeTool_OK" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="agentAcmTrainingAnalysis" />
+      <working_directory value="$PROJECT_DIR$/internal/agent/tools" />
+      <root_directory value="$PROJECT_DIR$" />
+      <kind value="PACKAGE" />
+      <package value="aATA/internal/agent/tools" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <framework value="gotest" />
+      <pattern value="^\QTestGetUserTrainingRangeTool_OK\E$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="aATA/internal/agent/tools 中的 TestGetUserTrainingRangeTool_RealDB" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="agentAcmTrainingAnalysis" />
+      <working_directory value="$PROJECT_DIR$/internal/agent/tools" />
+      <root_directory value="$PROJECT_DIR$" />
+      <kind value="PACKAGE" />
+      <package value="aATA/internal/agent/tools" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <framework value="gotest" />
+      <pattern value="^\QTestGetUserTrainingRangeTool_RealDB\E$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="aATA/internal/agent/tools 中的 TestGetUserTrainingRangeTool_Validate" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="agentAcmTrainingAnalysis" />
+      <working_directory value="$PROJECT_DIR$/internal/agent/tools" />
+      <root_directory value="$PROJECT_DIR$" />
+      <kind value="PACKAGE" />
+      <package value="aATA/internal/agent/tools" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <framework value="gotest" />
+      <pattern value="^\QTestGetUserTrainingRangeTool_Validate\E$" />
+      <method v="2" />
+    </configuration>
     <configuration name="aATA/internal/crawler 中的 TestPythonCrawler_FetchRange" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="agentAcmTrainingAnalysis" />
       <working_directory value="$PROJECT_DIR$/internal/crawler" />
@@ -120,6 +188,9 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Go 测试.aATA/internal/agent/tools 中的 TestGetUserTrainingRangeTool_RealDB" />
+        <item itemvalue="Go 测试.aATA/internal/agent/tools 中的 TestGetUserTrainingRangeTool_OK" />
+        <item itemvalue="Go 测试.aATA/internal/agent/tools 中的 TestGetUserTrainingRangeTool_Validate" />
         <item itemvalue="Go 测试.aATA/internal/logic 中的 TestTrainingLogic_RealSync" />
         <item itemvalue="Go 测试.aATA/internal/crawler 中的 TestPythonCrawler_FetchRange" />
       </list>
@@ -153,7 +224,8 @@
     </ignored-roots>
     <MESSAGE value="框架" />
     <MESSAGE value="优化用户逻辑，扩充数据库与数据模型" />
-    <option name="LAST_COMMIT_MESSAGE" value="优化用户逻辑，扩充数据库与数据模型" />
+    <MESSAGE value="优化结构，新增自动爬取昨日记录、批量创建学生功能" />
+    <option name="LAST_COMMIT_MESSAGE" value="优化结构，新增自动爬取昨日记录、批量创建学生功能" />
   </component>
   <component name="VgoModernizerVersionTracker">
     <upgrades>
