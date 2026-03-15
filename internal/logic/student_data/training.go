@@ -66,7 +66,7 @@ func (l *trainingLogic) SyncAllUsersYesterday(ctx context.Context) error {
 		if u.IsSystem == model.IsSystemUser {
 			continue
 		}
-		if u.CFHandle == "" || u.ACHandle == "" {
+		if u.CFHandle == "" && u.ACHandle == "" {
 			continue
 		}
 
@@ -160,7 +160,7 @@ func (l *trainingLogic) getStudentHandle(ctx context.Context, studentID string) 
 		return "", "", fmt.Errorf("user %s not found", studentID)
 	}
 
-	if u.CFHandle == "" || u.ACHandle == "" {
+	if u.CFHandle == "" && u.ACHandle == "" {
 		return "", "", fmt.Errorf("user %s handle not set", studentID)
 	}
 
