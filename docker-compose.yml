@@ -25,9 +25,9 @@ services:
 
   app:
     environment:
-      - DASHSCOPE_API_KEY=<>
-      - DASHSCOPE_BASE_URL=https://chat.deepseek.com/
-      - AGENT_TEST=1
+  - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
+  - DASHSCOPE_BASE_URL=${DASHSCOPE_BASE_URL}
+  - LLM_MODEL=${LLM_MODEL}
     build:
       context: .
       dockerfile: Dockerfile.dev

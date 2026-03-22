@@ -15,6 +15,7 @@ import (
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"os"
 )
 
 type ServiceContext struct {
@@ -62,7 +63,12 @@ func NewServiceContext(ctx context.Context, c config.Config) (*ServiceContext, e
 	}
 
 	// 拼装 agent 工具
-	llmClient := llm.NewAliyunQwenClient("deepseek-chat")
+	modelName := os.Getenv("LLM_MODEL")
+	if modelName == "" {
+    		modelName = "deepseek-chat" // 默认值
+	}
+
+	llmClient := llm.NewAliyunQwenClient(modelName)
 	TrainingSummaryTool := tools.NewTrainingSummaryTool(dailyModel)
 	ContestRatingSummaryTool := tools.NewContestRatingSummaryTool(contestModel)
 
