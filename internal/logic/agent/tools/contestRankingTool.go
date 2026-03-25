@@ -66,7 +66,7 @@ func (t *ContestRankingTool) Call(ctx context.Context, input json.RawMessage) (a
 		Platform:  args.Platform,
 		ContestID: args.ContestID,
 		Count:     len(list),
-		Items:     make([]domain.ContestRankingItem, 0, len(list)),
+		Items:     make([]domain.ContestRecord, 0, len(list)),
 	}
 
 	if len(list) > 0 {
@@ -77,16 +77,14 @@ func (t *ContestRankingTool) Call(ctx context.Context, input json.RawMessage) (a
 	}
 
 	for _, record := range list {
-		name := ""
-		u, err := t.users.FindByID(record.StudentID)
-		if err == nil && u != nil {
-			name = u.Name
-		}
 
-		res.Items = append(res.Items, domain.ContestRankingItem{
+		res.Items = append(res.Items, domain.ContestRecord{
 			StudentID:    record.StudentID,
-			Name:         name,
-			ContestRank:  record.ContestRank,
+			Platform:     record.Platform,
+			ContestID:    record.ContestID,
+			Name:         record.ContestName,
+			Date:         record.ContestDate,
+			Rank:         record.ContestRank,
 			OldRating:    record.OldRating,
 			NewRating:    record.NewRating,
 			RatingChange: record.RatingChange,

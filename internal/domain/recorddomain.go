@@ -80,15 +80,7 @@ type DeleteTrainingByDateReq struct {
 	Date      time.Time
 }
 
-type ContestRankingItem struct {
-	StudentID    string `json:"student_id"`
-	Name         string `json:"name"`
-	ContestRank  int    `json:"contest_rank"`
-	OldRating    int    `json:"old_rating"`
-	NewRating    int    `json:"new_rating"`
-	RatingChange int    `json:"rating_change"`
-	Performance  int    `json:"performance"`
-}
+
 
 type ContestRankingResult struct {
 	Platform    string               `json:"platform"`
@@ -96,5 +88,5 @@ type ContestRankingResult struct {
 	ContestName string               `json:"contest_name"`
 	ContestDate string               `json:"contest_date"`
 	Count       int                  `json:"count"`
-	Items       []ContestRankingItem `json:"items"`
+	Items       []ContestRecord     `json:"items"`
 }
