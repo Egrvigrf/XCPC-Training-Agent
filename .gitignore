@@ -1,7 +1,7 @@
 # env files
 .env
 .env.*
-!.env.example
+
 
 # local editor / system files
 .vscode/
@@ -23,3 +23,11 @@ __pycache__/
 *.pyc
 .idea/
 __pycache__/
+
+docker-compose.yml
+Dockerfile
+Dockerfile.dev
+
+etc/local/api.yaml
+
+
