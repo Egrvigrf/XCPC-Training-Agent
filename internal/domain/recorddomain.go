@@ -3,7 +3,7 @@ package domain
 import "time"
 
 type SyncStudentItem struct {
-	StudentID string `json:"id" binding:"required"`
+	StudentID string `json:"student_id" binding:"required"`
 }
 
 type AdminSyncTrainingReq struct {
@@ -78,4 +78,15 @@ type DeleteContestByIDReq struct {
 type DeleteTrainingByDateReq struct {
 	StudentID string
 	Date      time.Time
+}
+
+
+
+type ContestRankingResult struct {
+	Platform    string               `json:"platform"`
+	ContestID   string               `json:"contest_id"`
+	ContestName string               `json:"contest_name"`
+	ContestDate string               `json:"contest_date"`
+	Count       int                  `json:"count"`
+	Items       []ContestRecord     `json:"items"`
 }

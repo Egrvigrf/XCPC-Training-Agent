@@ -15,6 +15,7 @@ import (
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"os"
 )
 
 type ServiceContext struct {
@@ -36,8 +37,12 @@ type ServiceContext struct {
 	LoggingMid *middleware.LoggingMid
 
 	// AgentTools
-	TrainingSummaryTool      agent.Tool
-	ContestRatingSummaryTool agent.Tool
+	TrainingSummaryTool          agent.Tool
+	ContestRatingSummaryTool     agent.Tool
+	TrainingDayLeaderboardTool   agent.Tool
+	TrainingWeekLeaderboardTool  agent.Tool
+	TrainingMonthLeaderboardTool agent.Tool
+	ContestRankingTool           agent.Tool
 }
 
 func NewServiceContext(ctx context.Context, c config.Config) (*ServiceContext, error) {
@@ -62,9 +67,18 @@ func NewServiceContext(ctx context.Context, c config.Config) (*ServiceContext, e
 	}
 
 	// 拼装 agent 工具
-	llmClient := llm.NewAliyunQwenClient("glm-4.7")
+	modelName := os.Getenv("LLM_MODEL")
+	if modelName == "" {
+		modelName = "deepseek-chat" // 默认值
+	}
+
+	llmClient := llm.NewAliyunQwenClient(modelName)
 	TrainingSummaryTool := tools.NewTrainingSummaryTool(dailyModel)
 	ContestRatingSummaryTool := tools.NewContestRatingSummaryTool(contestModel)
+	TrainingDayLeaderboardTool := tools.NewTrainingDayLeaderboardTool(dailyModel, userModel)
+	TrainingWeekLeaderboardTool := tools.NewTrainingWeekLeaderboardTool(dailyModel, userModel)
+	TrainingMonthLeaderboardTool := tools.NewTrainingMonthLeaderboardTool(dailyModel, userModel)
+	ContestRankingTool := tools.NewContestRankingTool(contestModel, userModel)
 
 	res := &ServiceContext{
 		ctx:          ctx,
@@ -78,10 +92,14 @@ func NewServiceContext(ctx context.Context, c config.Config) (*ServiceContext, e
 		LoggingMid: middleware.NewLoggingMid(),
 		AdminMid:   middleware.NewAdminMid(),
 
-		Crawler:                  craw,
-		LLMClient:                llmClient,
-		TrainingSummaryTool:      TrainingSummaryTool,
-		ContestRatingSummaryTool: ContestRatingSummaryTool,
+		Crawler:                      craw,
+		LLMClient:                    llmClient,
+		TrainingSummaryTool:          TrainingSummaryTool,
+		ContestRatingSummaryTool:     ContestRatingSummaryTool,
+		TrainingDayLeaderboardTool:   TrainingDayLeaderboardTool,
+		TrainingWeekLeaderboardTool:  TrainingWeekLeaderboardTool,
+		TrainingMonthLeaderboardTool: TrainingMonthLeaderboardTool,
+		ContestRankingTool:           ContestRankingTool,
 	}
 
 	return res, initServer(res)

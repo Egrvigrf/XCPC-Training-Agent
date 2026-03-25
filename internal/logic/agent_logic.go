@@ -37,6 +37,10 @@ func (l *defaultAgentLogic) RunTask(
 	// 2️⃣ 注册工具（从 svcCtx 拿实例）
 	reg.Register(l.svcCtx.TrainingSummaryTool)
 	reg.Register(l.svcCtx.ContestRatingSummaryTool)
+	reg.Register(l.svcCtx.TrainingDayLeaderboardTool)
+	reg.Register(l.svcCtx.TrainingWeekLeaderboardTool)
+	reg.Register(l.svcCtx.TrainingMonthLeaderboardTool)
+	reg.Register(l.svcCtx.ContestRankingTool)
 
 	// 3️⃣ 创建 controller（任务级别）
 	ctrl := agent.NewController(

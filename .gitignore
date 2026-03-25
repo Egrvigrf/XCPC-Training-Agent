@@ -1,0 +1,33 @@
+# env files
+.env
+.env.*
+
+
+# local editor / system files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# logs
+*.log
+
+# build outputs
+bin/
+dist/
+*.out
+
+.idea/
+__pycache__/
+*.pyc
+.idea/
+__pycache__/
+
+docker-compose.yml
+Dockerfile
+Dockerfile.dev
+
+etc/local/api.yaml
+
+
