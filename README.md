@@ -75,12 +75,12 @@ sql/
 
 ### 1. 配置 LLM 环境变量
 
-在启动服务前，你需要准备好 LLM 的访问凭证。默认支持 **阿里云百炼 (DashScope)** 及其他兼容 OpenAI 接口协议的服务。
+在启动服务前，你需要准备好 LLM 的访问凭证。默认支持兼容 OpenAI 接口协议的服务。
 
 请在 `docker-compose.yaml` 中填写你的配置：
-
-* **DASHSCOPE_API_KEY**: 你的 API Key（例如：`sk-xxxx...`）。
-* **DASHSCOPE_BASE_URL**: 接口基础地址（百炼通常为 `https://dashscope.aliyuncs.com/compatible-mode/v1`）。
+- DASHSCOPE_API_KEY=秘钥
+- DASHSCOPE_BASE_URL=URL
+- LLM_MODEL=模型名称
 
 ### 2. 启动依赖与服务
 
@@ -113,16 +113,18 @@ services:
       retries: 5
 
   app:
+    environment:
+      - MYSQL_ROOT_HOST=%
+    # ----填写部分-----------------------------------
+      - DASHSCOPE_API_KEY=<TOKEN> // TOKEN
+      - DASHSCOPE_BASE_URL=<URL>
+      - LLM_MODEL=<NAME>
+    # ----------------------------------------------
+      - AGENT_TEST=1
     build:
       context: .
       dockerfile: Dockerfile.dev
     container_name: aATA-app
-    environment:
-      # === 需自行填写部分 ===
-      - DASHSCOPE_API_KEY=<Token>
-      - DASHSCOPE_BASE_URL=<URL>
-      # ====================
-      - AGENT_TEST=1
     ports:
       - "8888:8888"
     volumes:
@@ -130,11 +132,11 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+
     restart: always
 
 volumes:
   mysql_data:
-
 ```
 
 ---
