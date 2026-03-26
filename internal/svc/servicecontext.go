@@ -12,10 +12,10 @@ import (
 	"aATA/pkg/jwt"
 	"context"
 	"errors"
+	"os"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"os"
 )
 
 type ServiceContext struct {

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os/exec"
 	"time"
 )
@@ -43,6 +44,7 @@ func (p *PythonCrawler) FetchRange(
 	from time.Time,
 	to time.Time,
 ) (*FetchResponse, error) {
+	fmt.Println("调度爬虫？")
 
 	cmd := exec.CommandContext(
 		ctx,

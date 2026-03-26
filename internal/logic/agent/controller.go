@@ -9,10 +9,6 @@ parse + validate
 if call_tool → registry.call → append tool result → continue
 if finish → return
 
-控制：
-maxSteps=5
-maxToolCallsPerTool（例如每个工具最多 2 次）
-
 Trace 里记录：
 每一步 reasoning
 调了哪个工具

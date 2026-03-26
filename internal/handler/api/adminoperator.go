@@ -54,6 +54,7 @@ func (h *AdminOperator) SyncTraining(ctx *gin.Context) {
 		)
 
 		if err != nil {
+			fmt.Println(err)
 			failed = append(failed, FailedItem{
 				StudentID: stu.StudentID,
 				Error:     err.Error(),

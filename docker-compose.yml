@@ -17,16 +17,12 @@ services:
       timeout: 5s
       retries: 5
 
-#  redis:
-#    image: redis:7
-#    container_name: aATA-redis
-#    ports:
-#      - "6379:6379"
-
   app:
     environment:
-      - DASHSCOPE_API_KEY=<Token>
-      - DASHSCOPE_BASE_URL=https://coding.dashscope.aliyuncs.com/v1
+      - MYSQL_ROOT_HOST=%
+      - DASHSCOPE_API_KEY=<TOKEN>
+      - DASHSCOPE_BASE_URL=<URL>
+      - LLM_MODEL=<NAME>
       - AGENT_TEST=1
     build:
       context: .
@@ -39,8 +35,6 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-#      redis:
-#        condition: service_started
 
     restart: always
 
