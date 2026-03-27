@@ -58,18 +58,18 @@ func (c *Controller) Run(ctx context.Context, input AgentInput) (map[string]inte
 			observer.runFinished(state, final, resp.FinalOutput.FocusStudents)
 			return final, c.Trace.Result(), nil
 		default:
-			err := errors.New("invalid action")
+			err := errors.New("模型返回了不支持的动作")
 			observer.runFailed(state, observer.lastEventID, "validate_action", err, len(prompt), map[string]any{
 				"action":  resp.Action,
-				"summary": "run failed because model action was invalid",
+				"summary": "运行失败：模型返回了不支持的动作",
 			})
 			return nil, c.Trace.Result(), err
 		}
 	}
 
-	err := errors.New("max steps reached")
+	err := errors.New("执行步数超过上限")
 	observer.runFailed(state, observer.lastEventID, "loop_guard", err, 0, map[string]any{
-		"summary": "run failed because max steps was reached",
+		"summary": "运行失败：执行步数超过上限",
 	})
 	return nil, c.Trace.Result(), err
 }
@@ -99,9 +99,9 @@ func (c *Controller) completeStep(ctx context.Context, state *AgentState, observ
 	resp, parseErr = parseLLMResponse(repairCompletion.Content)
 	observer.recordModelReturn(*state, repairAttempt, repairCompletion, resp, parseErr)
 	if parseErr != nil {
-		finalErr := errors.New("LLM produced invalid JSON twice")
+		finalErr := errors.New("模型连续两次返回了非法 JSON")
 		observer.runFailed(*state, observer.lastEventID, "model_returned", finalErr, len(repairPrompt), map[string]any{
-			"summary": "run failed because model produced invalid JSON twice",
+			"summary": "运行失败：模型连续两次返回了非法 JSON",
 		})
 		return nil, finalErr
 	}
@@ -150,13 +150,13 @@ func parseLLMResponse(raw string) (*LLMResponse, error) {
 
 func finishOutput(resp *LLMResponse) (map[string]interface{}, error) {
 	if resp == nil || resp.FinalOutput == nil {
-		return nil, errors.New("missing final_output")
+		return nil, errors.New("缺少 final_output")
 	}
 	if resp.FinalOutput.DecisionType == "" {
-		return nil, errors.New("missing decision_type")
+		return nil, errors.New("缺少 decision_type")
 	}
 	if resp.FinalOutput.Report == "" {
-		return nil, errors.New("missing report")
+		return nil, errors.New("缺少 report")
 	}
 	return structToMap(resp.FinalOutput), nil
 }

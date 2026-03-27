@@ -40,7 +40,7 @@ func (r *Registry) List() []Tool {
 func (r *Registry) Call(ctx context.Context, name string, raw json.RawMessage) (any, error) {
 	tool, ok := r.tools[name]
 	if !ok {
-		return nil, fmt.Errorf("unknown tool: %s", name)
+		return nil, fmt.Errorf("未知工具：%s", name)
 	}
 	return tool.Call(ctx, raw)
 }

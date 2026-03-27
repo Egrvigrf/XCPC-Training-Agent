@@ -52,7 +52,7 @@ func (c *AliyunQwenClient) Complete(ctx context.Context, prompt string) (*Comple
 
 	// 基本参数校验，防止返回空配置
 	if c.apiKey == "" || c.baseURL == "" {
-		return nil, errors.New("missing DASHSCOPE_API_KEY or DASHSCOPE_BASE_URL")
+		return nil, errors.New("缺少 DASHSCOPE_API_KEY 或 DASHSCOPE_BASE_URL 配置")
 	}
 
 	// 构造请求体
@@ -102,24 +102,24 @@ func (c *AliyunQwenClient) Complete(ctx context.Context, prompt string) (*Comple
 	}
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return nil, fmt.Errorf("llm request failed: status=%d body=%s", resp.StatusCode, string(respBody))
+		return nil, fmt.Errorf("LLM 请求失败：状态码=%d，响应=%s", resp.StatusCode, string(respBody))
 	}
 
 	var result chatCompletionResponse
 	if err := json.Unmarshal(respBody, &result); err != nil {
-		return nil, fmt.Errorf("decode llm response: %w", err)
+		return nil, fmt.Errorf("解析 LLM 响应失败：%w", err)
 	}
 
 	if len(result.Choices) == 0 {
 		if result.Error != nil {
-			return nil, fmt.Errorf("llm returned no choices: %v", result.Error)
+			return nil, fmt.Errorf("LLM 未返回可用结果：%v", result.Error)
 		}
-		return nil, errors.New("llm returned no choices")
+		return nil, errors.New("LLM 未返回可用结果")
 	}
 
 	content := result.Choices[0].Message.Content
 	if content == "" {
-		return nil, errors.New("llm returned empty message content")
+		return nil, errors.New("LLM 返回内容为空")
 	}
 
 	return &Completion{

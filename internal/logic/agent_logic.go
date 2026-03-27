@@ -30,7 +30,7 @@ func (l *defaultAgentLogic) RunTask(
 ) (map[string]interface{}, agenttrace.RunTrace, error) {
 
 	if req == nil || req.Task == "" {
-		return nil, agenttrace.RunTrace{}, errors.New("task required")
+		return nil, agenttrace.RunTrace{}, errors.New("任务不能为空")
 	}
 
 	// 1️⃣ 创建 registry（任务级别）
