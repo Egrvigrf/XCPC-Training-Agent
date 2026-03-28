@@ -1,3 +1,5 @@
+// agent 运行内核
+
 package agent
 
 import (
@@ -32,11 +34,11 @@ func NewController(
 }
 
 func (c *Controller) Run(ctx context.Context, input AgentInput) (map[string]interface{}, agenttrace.RunTrace, error) {
-	state := AgentState{Input: input}
-	observer := newRunObserver(c.Trace, c.LLM, input, c.Registry.List())
+	state := AgentState{Input: input}                                    // 本次 run 的运行时状态容器
+	observer := newRunObserver(c.Trace, c.LLM, input, c.Registry.List()) // 观测状态
 
 	for state.Step = 0; state.Step < 10; state.Step++ {
-		prompt := buildPrompt(state, c.Registry)
+		prompt := buildPrompt(state, c.Registry) // 拼接提示词
 
 		resp, err := c.completeStep(ctx, &state, observer, prompt)
 		if err != nil {
@@ -74,20 +76,25 @@ func (c *Controller) Run(ctx context.Context, input AgentInput) (map[string]inte
 	return nil, c.Trace.Result(), err
 }
 
+// completeStep 模型调用完整流程
 func (c *Controller) completeStep(ctx context.Context, state *AgentState, observer *runObserver, prompt string) (*LLMResponse, error) {
+	// 启动模型
 	attempt := observer.startModel(*state, prompt, false)
 	completion, err := c.LLM.Complete(ctx, prompt)
+	// 调用失败
 	if err != nil {
 		observer.failModelCall(*state, attempt, err)
 		return nil, err
 	}
 
+	// 调用成功先解析 JSON
 	resp, parseErr := parseLLMResponse(completion.Content)
 	observer.recordModelReturn(*state, attempt, completion, resp, parseErr)
 	if parseErr == nil {
 		return resp, nil
 	}
 
+	// 解析失败，进入 repair 流程
 	repairPrompt := prompt + "\nYour previous output was invalid JSON. Please output strictly valid JSON only."
 	repairAttempt := observer.startModel(*state, repairPrompt, true)
 	repairCompletion, err := c.LLM.Complete(ctx, repairPrompt)
@@ -109,6 +116,7 @@ func (c *Controller) completeStep(ctx context.Context, state *AgentState, observ
 	return resp, nil
 }
 
+// runTool 工具调用完整流程
 func (c *Controller) runTool(ctx context.Context, state *AgentState, observer *runObserver, resp *LLMResponse) error {
 	attempt := observer.startTool(*state, resp.ToolName, resp.Arguments)
 
