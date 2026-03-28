@@ -132,6 +132,7 @@ func (c *Collector) Result() RunTrace {
 		Mode:       c.mode,
 		StartedAt:  c.startedAt,
 		FinishedAt: time.Now(),
+		TokenUsage: summarizeTokenUsage(events),
 		Spans:      spans,
 		Events:     events,
 	}
@@ -289,6 +290,41 @@ func previewJSON(v any, limit int) string {
 		return preview(fmt.Sprintf("%v", v), limit)
 	}
 	return preview(string(b), limit)
+}
+
+func summarizeTokenUsage(events []Event) TokenUsageSummary {
+	summary := TokenUsageSummary{}
+	for _, event := range events {
+		if event.EventType != EventModelReturned {
+			continue
+		}
+		summary.ModelCallCount++
+		summary.InputTokens += asInt(event.Payload["input_tokens"])
+		summary.OutputTokens += asInt(event.Payload["output_tokens"])
+		summary.TotalTokens += asInt(event.Payload["total_tokens"])
+	}
+	return summary
+}
+
+func asInt(v any) int {
+	switch x := v.(type) {
+	case int:
+		return x
+	case int8:
+		return int(x)
+	case int16:
+		return int(x)
+	case int32:
+		return int(x)
+	case int64:
+		return int(x)
+	case float32:
+		return int(x)
+	case float64:
+		return int(x)
+	default:
+		return 0
+	}
 }
 
 func preview(s string, limit int) string {

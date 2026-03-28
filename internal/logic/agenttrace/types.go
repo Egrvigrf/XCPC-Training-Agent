@@ -30,12 +30,20 @@ const (
 
 // RunTrace 一次完整性任务
 type RunTrace struct {
-	RunID      string    `json:"run_id"`
-	Mode       Mode      `json:"mode"`
-	StartedAt  time.Time `json:"started_at"`
-	FinishedAt time.Time `json:"finished_at"`
-	Spans      []Span    `json:"spans"`
-	Events     []Event   `json:"events"`
+	RunID      string            `json:"run_id"`
+	Mode       Mode              `json:"mode"`
+	StartedAt  time.Time         `json:"started_at"`
+	FinishedAt time.Time         `json:"finished_at"`
+	TokenUsage TokenUsageSummary `json:"token_usage"`
+	Spans      []Span            `json:"spans"`
+	Events     []Event           `json:"events"`
+}
+
+type TokenUsageSummary struct {
+	ModelCallCount int `json:"model_call_count"`
+	InputTokens    int `json:"input_tokens"`
+	OutputTokens   int `json:"output_tokens"`
+	TotalTokens    int `json:"total_tokens"`
 }
 
 // Event 阶段里的具体事件（瞬时事实）

@@ -308,6 +308,12 @@ func buildStateSnapshot(state AgentState, contextChars int, focusStudents []stri
 		"tool_results_count": len(state.ToolResults),
 		"evidence_types":     evidenceTypes,
 		"context_chars":      contextChars,
+		"resolved_paths":     state.ResolvedPaths,
+		"applied_memories":   state.AppliedMemories,
+		"snapshot_goal":      state.Snapshot.Goal,
+		"done_items_count":   len(state.Snapshot.DoneItems),
+		"todo_items_count":   len(state.Snapshot.TodoItems),
+		"artifacts_count":    len(state.Snapshot.Artifacts),
 	}
 	if len(focusStudents) > 0 {
 		snapshot["focus_students"] = focusStudents

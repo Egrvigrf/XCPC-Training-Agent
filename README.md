@@ -241,3 +241,60 @@ curl -s http://localhost:8888/v1/admin/agent/task/run \
 4. 模型最终输出分析结果 JSON
 
 如果你在代码里看到 `internal/llm/llm.go` 请求体包含 `tools` 和 `tool_choice`，同时 debug trace 的 `raw_response` 里有 `message.tool_calls`，那就是原生 tool-calling 链路。
+
+## Context Memory
+
+为了减少上下文污染和 token 消耗，agent 现在支持一套最小化 memory 机制：
+
+- `memory/project.md`：全局 project memory
+- `memory/rules/*.md`：按路径匹配的规则文件
+- `session snapshot`：每轮请求前注入的当前目标、确认事实、已完成事项、未完成事项和 artifacts 摘要
+- `tool result summarizer`：工具原始结果保留在后端，发回模型的是统一压缩后的轻量摘要
+
+规则文件支持一个很轻量的 front matter：
+
+```md
+---
+paths:
+  - internal/logic/agent/**
+  - internal/llm/**
+---
+这里写这组路径下的约束和偏好。
+```
+
+如果请求里带了路径，agent 会只加载匹配这些路径的规则，而不是把所有规则全量拼进 prompt。路径可以放在 `params.memory_paths`、`params.context_paths` 或 `params.paths`。
+
+示例：
+
+```json
+{
+  "task": "请分析 agent 核心实现",
+  "params": {
+    "memory_paths": [
+      "internal/logic/agent/controller.go",
+      "internal/llm/llm.go"
+    ]
+  },
+  "trace_mode": "debug"
+}
+```
+
+在 `debug` trace 里，可以看到：
+
+- `resolved_paths`
+- `applied_memories`
+- session snapshot 的统计信息
+
+这套设计的目标不是做一个很重的 memory 系统，而是把上下文压缩成：
+
+`system + project memory + matched path rules + session snapshot + recent messages + current task`
+
+同时，工具调用结果不再默认把原始大 JSON 全量回传模型，而是先经过全局摘要器压缩。当前默认策略会优先保留：
+
+- 小型标量字段
+- 身份字段，如 `student_id`、`contest_id`、`platform`
+- 数组名和数组长度
+- 大对象的 key 概览
+- 少量预览项
+
+这样做的目的，是先把工具结果从“全文长期驻留”改成“原始结果留在后端，模型只消费轻量摘要”。

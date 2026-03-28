@@ -4,16 +4,19 @@ package agent
 
 import (
 	"aATA/internal/llm"
+	"aATA/internal/logic/agentmemory"
 	"aATA/internal/logic/agenttrace"
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
 	"strings"
 )
 
 type Controller struct {
 	LLM      llm.Client
 	Registry *Registry
+	Summary  ToolSummarizer
 	Trace    agenttrace.Sink
 }
 
@@ -29,30 +32,53 @@ func NewController(
 	return &Controller{
 		LLM:      llmClient,
 		Registry: registry,
+		Summary:  NewDefaultToolSummarizer(),
 		Trace:    traceSink,
 	}
 }
 
 func (c *Controller) Run(ctx context.Context, input AgentInput) (map[string]interface{}, agenttrace.RunTrace, error) {
-	state := AgentState{Input: input}
-	tools := buildToolDefinitions(c.Registry)
-	messages := buildInitialMessages(input)
-	observer := newRunObserver(c.Trace, c.LLM, input, c.Registry.List())
+	// 解析记忆路径，推导出本轮任务应该加载哪些 memory 文件，从全量注入变成了按任务定向注入
+	resolvedPaths := input.MemoryPaths()
+	// 加载记忆包，做本轮运行前的外部记忆检索与装配
+	memoryBundle, err := agentmemory.NewLoader(os.Getenv("AGENT_MEMORY_DIR")).Load(resolvedPaths)
+	if err != nil {
+		return nil, c.Trace.Result(), err
+	}
+
+	// 初始化模型状态
+	state := AgentState{
+		Input: input,
+		// 引入会话快照，上下文不再等同于全部历史消息，而是等于“基础消息+当前快照+局部对话窗口”
+		// 这代表快照是给下一步决策使用的状态骨架
+		Snapshot: newSessionSnapshot(input),
+		// 把本轮匹配到的 memory 路径也存进状态里，state 不只是会话状态，还保存了一部分上下文信息
+		ResolvedPaths: resolvedPaths,
+		// 记忆审核，不仅加载 memory，还把本轮应该用哪些记忆条目记忆下来了
+		AppliedMemories: appliedMemoryNames(memoryBundle),
+	}
+	tools := buildToolDefinitions(c.Registry)                            // 注册工具表
+	baseMessages := buildBaseMessages(input, memoryBundle)               // 构造基础消息
+	conversation := make([]llm.Message, 0, 16)                           // 初始化动态消息队列
+	observer := newRunObserver(c.Trace, c.LLM, input, c.Registry.List()) // 初始化观测模块
 
 	for state.Step = 0; state.Step < 10; state.Step++ {
+		// 通过基础消息、执行快照、动态消息队列组装请求
 		req := llm.ChatRequest{
-			Messages: messages,
+			Messages: buildRequestMessages(baseMessages, state.Snapshot, conversation),
 			Tools:    tools,
 		}
 
+		// 调用模型完成当前 step
 		completion, err := c.completeStep(ctx, &state, observer, req)
 		if err != nil {
 			return nil, c.Trace.Result(), err
 		}
 
+		// 模型发起工具调用
 		if len(completion.ToolCalls) > 0 {
-			messages = append(messages, completion.Message)
-			c.runToolCalls(ctx, &state, observer, completion.ToolCalls, &messages)
+			conversation = append(conversation, completion.Message)                    // 把决策放入动态消息队列
+			c.runToolCalls(ctx, &state, observer, completion.ToolCalls, &conversation) // 执行工具并且返回调用结果
 			continue
 		}
 
@@ -69,11 +95,24 @@ func (c *Controller) Run(ctx context.Context, input AgentInput) (map[string]inte
 		return final, c.Trace.Result(), nil
 	}
 
-	err := errors.New("执行步数超过上限")
+	err = errors.New("执行步数超过上限")
 	observer.runFailed(state, observer.lastEventID, "loop_guard", err, map[string]any{
 		"summary": "运行失败：执行步数超过上限",
 	})
 	return nil, c.Trace.Result(), err
+}
+
+func appliedMemoryNames(bundle agentmemory.Bundle) []string {
+	names := make([]string, 0, len(bundle.Rules)+1)
+	if bundle.Project != "" {
+		names = append(names, "project")
+	}
+	for _, rule := range bundle.Rules {
+		if rule.Name != "" {
+			names = append(names, "rule:"+rule.Name)
+		}
+	}
+	return names
 }
 
 func (c *Controller) completeStep(ctx context.Context, state *AgentState, observer *runObserver, req llm.ChatRequest) (*llm.ChatCompletion, error) {
@@ -117,13 +156,16 @@ func (c *Controller) runToolCall(ctx context.Context, state *AgentState, observe
 	})
 
 	if callErr != nil {
+		summary := c.Summary.Summarize(call.Function.Name, map[string]any{"error": callErr.Error()})
 		observer.recordToolReturn(*state, attempt, latencyMs, nil, callErr)
+		state.Snapshot.recordToolResult(call.Function.Name, false)
 		state.ToolResults = append(state.ToolResults, ToolResult{
 			ToolName: call.Function.Name,
 			Result:   map[string]string{"error": callErr.Error()},
+			Summary:  summary,
 		})
 
-		payload, _ := json.Marshal(map[string]string{"error": callErr.Error()})
+		payload, _ := json.Marshal(summary)
 		return llm.Message{
 			Role:       "tool",
 			ToolCallID: call.ID,
@@ -131,18 +173,68 @@ func (c *Controller) runToolCall(ctx context.Context, state *AgentState, observe
 		}, callErr
 	}
 
+	summary := c.Summary.Summarize(call.Function.Name, result)
 	state.ToolResults = append(state.ToolResults, ToolResult{
 		ToolName: call.Function.Name,
 		Result:   result,
+		Summary:  summary,
 	})
+	state.Snapshot.recordToolResult(call.Function.Name, true)
 	observer.recordToolReturn(*state, attempt, latencyMs, result, nil)
 
-	payload, _ := json.Marshal(result)
+	payload, _ := json.Marshal(summary)
 	return llm.Message{
 		Role:       "tool",
 		ToolCallID: call.ID,
 		Content:    string(payload),
 	}, nil
+}
+
+func (in AgentInput) MemoryPaths() []string {
+	if in.Params == nil {
+		return nil
+	}
+
+	keys := []string{"memory_paths", "context_paths", "paths"}
+	paths := make([]string, 0, 4)
+	for _, key := range keys {
+		raw, ok := in.Params[key]
+		if !ok {
+			continue
+		}
+		switch v := raw.(type) {
+		case []string:
+			for _, item := range v {
+				item = strings.TrimSpace(item)
+				if item != "" {
+					paths = append(paths, item)
+				}
+			}
+		case []any:
+			for _, item := range v {
+				text, ok := item.(string)
+				if !ok {
+					continue
+				}
+				text = strings.TrimSpace(text)
+				if text != "" {
+					paths = append(paths, text)
+				}
+			}
+		case string:
+			for _, item := range strings.Split(v, ",") {
+				item = strings.TrimSpace(item)
+				if item != "" {
+					paths = append(paths, item)
+				}
+			}
+		}
+	}
+
+	if len(paths) == 0 {
+		return nil
+	}
+	return paths
 }
 
 func finishOutput(raw string) (map[string]interface{}, error) {

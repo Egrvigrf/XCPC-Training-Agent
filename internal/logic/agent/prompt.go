@@ -2,38 +2,75 @@ package agent
 
 import (
 	"aATA/internal/llm"
+	"aATA/internal/logic/agentmemory"
 	"encoding/json"
 	"fmt"
 	"sort"
 )
 
-func buildInitialMessages(input AgentInput) []llm.Message {
-	inputJSON, _ := json.MarshalIndent(input, "", "  ")
+const recentConversationLimit = 6
 
-	return []llm.Message{
+func buildBaseMessages(input AgentInput, bundle agentmemory.Bundle) []llm.Message {
+	messages := []llm.Message{
 		{
 			Role:    "system",
 			Content: systemPrompt(),
 		},
-		{
-			Role:    "user",
-			Content: fmt.Sprintf("当前任务输入如下：\n%s", string(inputJSON)),
-		},
 	}
+
+	if bundle.Project != "" {
+		messages = append(messages, llm.Message{
+			Role:    "system",
+			Content: "Project Memory:\n" + bundle.Project,
+		})
+	}
+
+	for _, rule := range bundle.Rules {
+		if rule.Content == "" {
+			continue
+		}
+		messages = append(messages, llm.Message{
+			Role:    "system",
+			Content: fmt.Sprintf("Path Rule (%s):\n%s", rule.Name, rule.Content),
+		})
+	}
+
+	inputJSON, _ := json.MarshalIndent(input, "", "  ")
+	messages = append(messages, llm.Message{
+		Role:    "user",
+		Content: fmt.Sprintf("当前任务输入如下：\n%s", string(inputJSON)),
+	})
+
+	return messages
+}
+
+func buildRequestMessages(baseMessages []llm.Message, snapshot SessionSnapshot, conversation []llm.Message) []llm.Message {
+	out := make([]llm.Message, 0, len(baseMessages)+1+recentConversationLimit)
+	if len(baseMessages) == 0 {
+		return out
+	}
+
+	out = append(out, baseMessages[:len(baseMessages)-1]...)
+	out = append(out, llm.Message{
+		Role:    "system",
+		Content: buildSnapshotMessage(snapshot),
+	})
+	out = append(out, baseMessages[len(baseMessages)-1])
+	out = append(out, recentConversation(conversation)...)
+	return out
 }
 
 func systemPrompt() string {
 	return `
 你是 XCPC 集训队训练分析智能体。
 
-你可以通过系统提供的 tools 获取训练数据、比赛数据和排行榜数据。
-当信息不足时，优先调用合适的 tool；当信息已经足够时，直接给出最终结论。
+规则：
+1. 当信息不足时，优先调用已提供的工具获取数据。
+2. 不要虚构工具、数据或结论。
+3. 当证据充分时，直接输出最终结果。
+4. 最终输出必须是一个合法 JSON 对象，不要输出 Markdown，不要输出额外说明。
 
-要求：
-1. 仅使用系统已经提供的 tools，不要虚构工具。
-2. 可以多轮调用 tool，直到证据足够。
-3. 完成任务时，assistant content 必须直接输出一个合法 JSON 对象，不要输出 Markdown，不要输出解释性前后缀。
-4. 最终 JSON 结构必须是：
+最终 JSON 结构：
 {
   "decision_type": string,
   "focus_students": string[],
@@ -41,10 +78,19 @@ func systemPrompt() string {
   "report": string,
   "metrics": object
 }
-5. 即使没有聚焦学生，也要输出 "focus_students": []。
-6. 即使没有额外指标，也要输出 "metrics": {}。
-7. report 写完整自然语言分析；confidence 取值 0 到 1。
 `
+}
+
+func buildSnapshotMessage(snapshot SessionSnapshot) string {
+	body, _ := json.MarshalIndent(snapshot, "", "  ")
+	return "Session Snapshot:\n" + string(body)
+}
+
+func recentConversation(messages []llm.Message) []llm.Message {
+	if len(messages) <= recentConversationLimit {
+		return append([]llm.Message(nil), messages...)
+	}
+	return append([]llm.Message(nil), messages[len(messages)-recentConversationLimit:]...)
 }
 
 func buildToolDefinitions(registry *Registry) []llm.ToolDefinition {

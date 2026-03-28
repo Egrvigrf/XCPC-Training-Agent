@@ -38,8 +38,9 @@ func (h *AdminAgent) RunTask(ctx *gin.Context) {
 	}
 
 	httpx.OkWithData(ctx, gin.H{
-		"task":   req.Task,
-		"result": res,
-		"trace":  trace,
+		"task":        req.Task,
+		"result":      res,
+		"token_usage": trace.TokenUsage,
+		"trace":       trace,
 	})
 }

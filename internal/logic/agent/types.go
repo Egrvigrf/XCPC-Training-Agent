@@ -13,15 +13,28 @@ type AgentInput struct {
 	Params map[string]interface{} `json:"params"`
 }
 
+type SessionSnapshot struct {
+	Goal           string   `json:"goal"`
+	ConfirmedFacts []string `json:"confirmed_facts"`
+	DoneItems      []string `json:"done_items"`
+	TodoItems      []string `json:"todo_items"`
+	Artifacts      []string `json:"artifacts"`
+}
+
 type ToolResult struct {
 	ToolName string
 	Result   interface{}
+	Summary  map[string]any
 }
 
 type AgentState struct {
-	Input       AgentInput
-	ToolResults []ToolResult
-	Step        int
+	Input           AgentInput
+	Snapshot        SessionSnapshot
+	ToolResults     []ToolResult
+	Conversation    []string
+	ResolvedPaths   []string
+	AppliedMemories []string
+	Step            int
 }
 
 type FinalOutput struct {
