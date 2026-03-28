@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -24,14 +25,14 @@ type runObserver struct {
 type modelAttempt struct {
 	spanID  string
 	eventID string
-	prompt  string
-	repair  bool
+	req     llm.ChatRequest
 }
 
 type toolAttempt struct {
-	spanID   string
-	eventID  string
-	toolName string
+	spanID     string
+	eventID    string
+	toolName   string
+	toolCallID string
 }
 
 func newRunObserver(trace agenttrace.Sink, llmClient llm.Client, input AgentInput, tools []Tool) *runObserver {
@@ -63,42 +64,36 @@ func newRunObserver(trace agenttrace.Sink, llmClient llm.Client, input AgentInpu
 	return observer
 }
 
-// startModel 模型调用开始
-func (o *runObserver) startModel(state AgentState, prompt string, repair bool) modelAttempt {
-	summary := "开始调用模型"
-	if repair {
-		summary = "开始修复性调用模型"
-	}
+func (o *runObserver) startModel(state AgentState, req llm.ChatRequest) modelAttempt {
+	snapshot := buildStateSnapshot(state, buildRequestContextSize(req), nil)
 
 	spanID := o.trace.StartSpan(state.Step, agenttrace.SpanModelCall, o.lastSpanID, map[string]any{
 		"entity_type":    "model",
 		"entity_name":    o.modelName,
 		"status":         "started",
-		"summary":        summary,
-		"state_snapshot": buildStateSnapshot(state, len(prompt), nil),
+		"summary":        "开始调用模型",
+		"state_snapshot": snapshot,
 	})
 
 	eventID := o.trace.Record(state.Step, agenttrace.EventModelCalled, o.lastEventID, map[string]any{
 		"status":                  "started",
 		"entity_type":             "model",
 		"entity_name":             o.modelName,
-		"summary":                 summary,
-		"prompt":                  prompt,
-		"prompt_length":           len(prompt),
+		"summary":                 "开始调用模型",
+		"messages":                req.Messages,
+		"message_count":           len(req.Messages),
+		"tool_count":              len(req.Tools),
 		"history_tool_result_cnt": len(state.ToolResults),
-		"repair_attempt":          repair,
-		"state_snapshot":          buildStateSnapshot(state, len(prompt), nil),
+		"state_snapshot":          snapshot,
 	})
 
 	return modelAttempt{
 		spanID:  spanID,
 		eventID: eventID,
-		prompt:  prompt,
-		repair:  repair,
+		req:     req,
 	}
 }
 
-// failModelCall 模型调用失败
 func (o *runObserver) failModelCall(state AgentState, attempt modelAttempt, err error) {
 	o.trace.FinishSpan(attempt.spanID, "error", map[string]any{
 		"entity_type": "model",
@@ -106,18 +101,15 @@ func (o *runObserver) failModelCall(state AgentState, attempt modelAttempt, err 
 		"error":       err.Error(),
 		"summary":     "模型调用失败",
 	})
-	o.runFailed(state, attempt.eventID, "model_called", err, len(attempt.prompt), nil)
+	o.runFailed(state, attempt.eventID, "model_called", err, map[string]any{
+		"message_count": len(attempt.req.Messages),
+		"tool_count":    len(attempt.req.Tools),
+	})
 }
 
-// recordModelReturn 模型调用返回
-func (o *runObserver) recordModelReturn(state AgentState, attempt modelAttempt, completion *llm.Completion, resp *LLMResponse, parseErr error) {
+func (o *runObserver) recordModelReturn(state AgentState, attempt modelAttempt, completion *llm.ChatCompletion, parseErr error) {
 	parseOK := parseErr == nil
-	summary := "模型返回了非法 JSON"
-	if parseOK {
-		summary = buildModelReturnSummary(resp, attempt.repair)
-	} else if attempt.repair {
-		summary = "修复性模型调用仍然返回了非法 JSON"
-	}
+	summary := buildModelReturnSummary(completion, parseErr)
 
 	o.trace.FinishSpan(attempt.spanID, "success", map[string]any{
 		"entity_type":   "model",
@@ -131,14 +123,13 @@ func (o *runObserver) recordModelReturn(state AgentState, attempt modelAttempt, 
 		"total_tokens":  completion.Usage.TotalTokens,
 	})
 
-	cleaned := cleanLLMOutput(completion.Content)
 	payload := map[string]any{
 		"status":         "success",
 		"entity_type":    "model",
 		"entity_name":    o.modelName,
 		"summary":        summary,
-		"raw":            completion.Content,
-		"cleaned":        cleaned,
+		"content":        completion.Content,
+		"tool_calls":     completion.ToolCalls,
 		"raw_response":   completion.RawResponse,
 		"parse_ok":       parseOK,
 		"latency_ms":     completion.LatencyMs,
@@ -146,24 +137,22 @@ func (o *runObserver) recordModelReturn(state AgentState, attempt modelAttempt, 
 		"input_tokens":   completion.Usage.PromptTokens,
 		"output_tokens":  completion.Usage.CompletionTokens,
 		"total_tokens":   completion.Usage.TotalTokens,
-		"state_snapshot": buildStateSnapshot(state, len(attempt.prompt), nil),
-		"repair_attempt": attempt.repair,
+		"state_snapshot": buildStateSnapshot(state, buildRequestContextSize(attempt.req), nil),
 	}
 
 	if parseErr != nil {
 		payload["parse_error"] = parseErr.Error()
-		payload["repairing"] = !attempt.repair
 	} else {
-		payload["response"] = llmResponseSummary(resp)
-		payload["repaired"] = attempt.repair
+		payload["response"] = chatCompletionSummary(completion)
 	}
 
 	o.lastSpanID = attempt.spanID
 	o.lastEventID = o.trace.Record(state.Step, agenttrace.EventModelReturned, attempt.eventID, payload)
 }
 
-// startTool 工具调用开始
-func (o *runObserver) startTool(state AgentState, toolName string, arguments map[string]any) toolAttempt {
+func (o *runObserver) startTool(state AgentState, toolName, arguments, toolCallID string) toolAttempt {
+	argsJSON := tryDecodeJSON(arguments)
+
 	spanID := o.trace.StartSpan(state.Step, agenttrace.SpanToolCall, o.lastSpanID, map[string]any{
 		"entity_type":    "tool",
 		"entity_name":    toolName,
@@ -178,18 +167,20 @@ func (o *runObserver) startTool(state AgentState, toolName string, arguments map
 		"entity_name":    toolName,
 		"summary":        "开始调用工具",
 		"tool_name":      toolName,
-		"arguments":      arguments,
+		"tool_call_id":   toolCallID,
+		"arguments":      argsJSON,
+		"arguments_raw":  arguments,
 		"state_snapshot": buildStateSnapshot(state, 0, nil),
 	})
 
 	return toolAttempt{
-		spanID:   spanID,
-		eventID:  eventID,
-		toolName: toolName,
+		spanID:     spanID,
+		eventID:    eventID,
+		toolName:   toolName,
+		toolCallID: toolCallID,
 	}
 }
 
-// recordToolReturn 工具调用返回
 func (o *runObserver) recordToolReturn(state AgentState, attempt toolAttempt, latencyMs int64, result any, err error) {
 	status := "success"
 	summary := "工具调用成功"
@@ -200,6 +191,7 @@ func (o *runObserver) recordToolReturn(state AgentState, attempt toolAttempt, la
 		"entity_name":    attempt.toolName,
 		"summary":        summary,
 		"tool_name":      attempt.toolName,
+		"tool_call_id":   attempt.toolCallID,
 		"latency_ms":     latencyMs,
 		"result_summary": resultSummary,
 		"state_snapshot": buildStateSnapshot(state, 0, nil),
@@ -232,8 +224,7 @@ func (o *runObserver) recordToolReturn(state AgentState, attempt toolAttempt, la
 	o.lastEventID = o.trace.Record(state.Step, agenttrace.EventToolReturned, attempt.eventID, payload)
 }
 
-// runFailed 运行时失败
-func (o *runObserver) runFailed(state AgentState, parentEventID, stage string, err error, contextChars int, extra map[string]any) {
+func (o *runObserver) runFailed(state AgentState, parentEventID, stage string, err error, extra map[string]any) {
 	payload := map[string]any{
 		"status":         "error",
 		"entity_type":    "run",
@@ -241,7 +232,7 @@ func (o *runObserver) runFailed(state AgentState, parentEventID, stage string, e
 		"stage":          stage,
 		"error":          err.Error(),
 		"summary":        fmt.Sprintf("运行失败，阶段：%s", stage),
-		"state_snapshot": buildStateSnapshot(state, contextChars, nil),
+		"state_snapshot": buildStateSnapshot(state, 0, nil),
 	}
 	for k, v := range extra {
 		payload[k] = v
@@ -249,7 +240,6 @@ func (o *runObserver) runFailed(state AgentState, parentEventID, stage string, e
 	o.trace.Record(state.Step, agenttrace.EventRunFailed, parentEventID, payload)
 }
 
-// runFinished 运行时成功
 func (o *runObserver) runFinished(state AgentState, final map[string]any, focusStudents []string) {
 	o.trace.Record(state.Step, agenttrace.EventRunFinished, o.lastEventID, map[string]any{
 		"status":         "success",
@@ -269,29 +259,38 @@ func modelName(client llm.Client) string {
 	return descriptor.ModelName()
 }
 
-func llmResponseSummary(resp *LLMResponse) map[string]any {
+func chatCompletionSummary(resp *llm.ChatCompletion) map[string]any {
 	if resp == nil {
 		return map[string]any{}
 	}
 
 	summary := map[string]any{
-		"action":    resp.Action,
-		"tool_name": resp.ToolName,
-		"reasoning": resp.Reasoning,
+		"finish_reason":  resp.FinishReason,
+		"content_length": len(resp.Content),
 	}
 
-	if resp.FinalOutput != nil {
-		summary["final_output"] = map[string]any{
-			"decision_type":      resp.FinalOutput.DecisionType,
-			"focus_students_cnt": len(resp.FinalOutput.FocusStudents),
-			"metrics_cnt":        len(resp.FinalOutput.Metrics),
-			"report_length":      len(resp.FinalOutput.Report),
-			"confidence":         resp.FinalOutput.Confidence,
+	if len(resp.ToolCalls) > 0 {
+		calls := make([]map[string]any, 0, len(resp.ToolCalls))
+		for _, call := range resp.ToolCalls {
+			calls = append(calls, map[string]any{
+				"id":               call.ID,
+				"type":             call.Type,
+				"name":             call.Function.Name,
+				"arguments_length": len(call.Function.Arguments),
+			})
 		}
+		summary["tool_calls"] = calls
+		return summary
 	}
 
-	if len(resp.Arguments) > 0 {
-		summary["arguments"] = resp.Arguments
+	if final, err := parseFinalOutput(resp.Content); err == nil {
+		summary["final_output"] = map[string]any{
+			"decision_type":      final.DecisionType,
+			"focus_students_cnt": len(final.FocusStudents),
+			"metrics_cnt":        len(final.Metrics),
+			"report_length":      len(final.Report),
+			"confidence":         final.Confidence,
+		}
 	}
 
 	return summary
@@ -344,20 +343,45 @@ func buildToolResultSummary(result any) map[string]any {
 	}
 }
 
-func buildModelReturnSummary(resp *LLMResponse, repaired bool) string {
+func buildModelReturnSummary(resp *llm.ChatCompletion, parseErr error) string {
 	if resp == nil {
 		return "模型返回为空"
 	}
-	if resp.Action == "call_tool" {
-		if repaired {
-			return fmt.Sprintf("修复性模型调用决定调用工具 %s", resp.ToolName)
+	if len(resp.ToolCalls) > 0 {
+		if len(resp.ToolCalls) == 1 {
+			return fmt.Sprintf("模型决定调用工具 %s", resp.ToolCalls[0].Function.Name)
 		}
-		return fmt.Sprintf("模型决定调用工具 %s", resp.ToolName)
+		return fmt.Sprintf("模型决定并行调用 %d 个工具", len(resp.ToolCalls))
 	}
-	if repaired {
-		return "修复性模型调用生成了最终答案"
+	if parseErr != nil {
+		return "模型返回了无法解析的最终答案"
 	}
 	return "模型生成了最终答案"
+}
+
+func buildRequestContextSize(req llm.ChatRequest) int {
+	size := 0
+	for _, msg := range req.Messages {
+		size += len(msg.Content)
+		for _, call := range msg.ToolCalls {
+			size += len(call.Function.Name)
+			size += len(call.Function.Arguments)
+		}
+	}
+	return size
+}
+
+func tryDecodeJSON(raw string) any {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return map[string]any{}
+	}
+
+	var v any
+	if err := json.Unmarshal([]byte(raw), &v); err != nil {
+		return raw
+	}
+	return v
 }
 
 func errorString(err error) string {

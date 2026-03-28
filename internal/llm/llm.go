@@ -13,22 +13,40 @@ import (
 	"time"
 )
 
-type AliyunQwenClient struct {
+type OpenAICompatibleClient struct {
 	apiKey  string
 	baseURL string
 	model   string
 }
 
-func (c *AliyunQwenClient) ModelName() string {
+func NewOpenAICompatibleClient(model string) *OpenAICompatibleClient {
+	return &OpenAICompatibleClient{
+		apiKey: firstNonEmpty(
+			os.Getenv("LLM_API_KEY"),
+			os.Getenv("OPENAI_API_KEY"),
+			os.Getenv("DASHSCOPE_API_KEY"),
+		),
+		baseURL: normalizeChatCompletionsURL(firstNonEmpty(
+			os.Getenv("LLM_BASE_URL"),
+			os.Getenv("OPENAI_BASE_URL"),
+			os.Getenv("DASHSCOPE_BASE_URL"),
+		)),
+		model: model,
+	}
+}
+
+func NewAliyunQwenClient(model string) *OpenAICompatibleClient {
+	return NewOpenAICompatibleClient(model)
+}
+
+func (c *OpenAICompatibleClient) ModelName() string {
 	return c.model
 }
 
 type chatCompletionResponse struct {
 	Choices []struct {
-		Message struct {
-			Content string `json:"content"`
-		} `json:"message"`
-		FinishReason string `json:"finish_reason"`
+		Message      responseMessage `json:"message"`
+		FinishReason string          `json:"finish_reason"`
 	} `json:"choices"`
 	Usage struct {
 		PromptTokens     int `json:"prompt_tokens"`
@@ -38,45 +56,83 @@ type chatCompletionResponse struct {
 	Error any `json:"error"`
 }
 
-func NewAliyunQwenClient(model string) *AliyunQwenClient {
-	return &AliyunQwenClient{
-		apiKey:  os.Getenv("DASHSCOPE_API_KEY"),
-		baseURL: normalizeChatCompletionsURL(os.Getenv("DASHSCOPE_BASE_URL")),
-		model:   model,
-	}
+type responseMessage struct {
+	Role      string             `json:"role"`
+	Content   any                `json:"content"`
+	ToolCalls []responseToolCall `json:"tool_calls"`
 }
 
-// Complete 向阿里云 DashScope 发送请求，并且返回模型输出文本
-func (c *AliyunQwenClient) Complete(ctx context.Context, prompt string) (*Completion, error) {
-	startedAt := time.Now()
+type responseToolCall struct {
+	ID       string               `json:"id"`
+	Type     string               `json:"type"`
+	Function responseFunctionCall `json:"function"`
+}
 
-	// 基本参数校验，防止返回空配置
-	if c.apiKey == "" || c.baseURL == "" {
-		return nil, errors.New("缺少 DASHSCOPE_API_KEY 或 DASHSCOPE_BASE_URL 配置")
-	}
+type responseFunctionCall struct {
+	Name      string `json:"name"`
+	Arguments any    `json:"arguments"`
+}
 
-	// 构造请求体
-	body := map[string]interface{}{
-		"model": c.model,
-		"messages": []map[string]string{
+func (c *OpenAICompatibleClient) Complete(ctx context.Context, prompt string) (*Completion, error) {
+	temperature := 0.0
+	resp, err := c.Chat(ctx, ChatRequest{
+		Messages: []Message{
 			{
-				"role":    "system",
-				"content": "你是一个严格遵循指令的智能助手。",
+				Role:    "system",
+				Content: "你是一个严格遵循指令的智能助手。",
 			},
 			{
-				"role":    "user",
-				"content": prompt,
+				Role:    "user",
+				Content: prompt,
 			},
 		},
-		"temperature": 0,
-		"stream":      false,
+		Temperature: &temperature,
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	jsonBody, _ := json.Marshal(body)
+	return &Completion{
+		Content:      resp.Content,
+		FinishReason: resp.FinishReason,
+		LatencyMs:    resp.LatencyMs,
+		Usage:        resp.Usage,
+		RawResponse:  resp.RawResponse,
+	}, nil
+}
 
-	req, err := http.NewRequestWithContext(
+func (c *OpenAICompatibleClient) Chat(ctx context.Context, req ChatRequest) (*ChatCompletion, error) {
+	startedAt := time.Now()
+
+	if c.apiKey == "" || c.baseURL == "" {
+		return nil, errors.New("缺少 LLM_API_KEY/OPENAI_API_KEY/DASHSCOPE_API_KEY 或 LLM_BASE_URL/OPENAI_BASE_URL/DASHSCOPE_BASE_URL 配置")
+	}
+
+	body := map[string]any{
+		"model":    c.model,
+		"messages": req.Messages,
+		"stream":   false,
+	}
+
+	if req.Temperature != nil {
+		body["temperature"] = *req.Temperature
+	} else {
+		body["temperature"] = 0
+	}
+
+	if len(req.Tools) > 0 {
+		body["tools"] = req.Tools
+		body["tool_choice"] = "auto"
+	}
+
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+
+	httpReq, err := http.NewRequestWithContext(
 		ctx,
-		"POST",
+		http.MethodPost,
 		c.baseURL,
 		bytes.NewBuffer(jsonBody),
 	)
@@ -84,13 +140,11 @@ func (c *AliyunQwenClient) Complete(ctx context.Context, prompt string) (*Comple
 		return nil, err
 	}
 
-	// 设置 Header，标准 OpenAI 兼容格式
-	req.Header.Set("Authorization", "Bearer "+c.apiKey)
-	req.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", "Bearer "+c.apiKey)
+	httpReq.Header.Set("Content-Type", "application/json")
 
-	// 执行 HTTP 请求
 	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := client.Do(httpReq)
 	if err != nil {
 		return nil, err
 	}
@@ -117,13 +171,15 @@ func (c *AliyunQwenClient) Complete(ctx context.Context, prompt string) (*Comple
 		return nil, errors.New("LLM 未返回可用结果")
 	}
 
-	content := result.Choices[0].Message.Content
-	if content == "" {
-		return nil, errors.New("LLM 返回内容为空")
+	message, err := normalizeMessage(result.Choices[0].Message)
+	if err != nil {
+		return nil, err
 	}
 
-	return &Completion{
-		Content:      content,
+	return &ChatCompletion{
+		Message:      message,
+		Content:      message.Content,
+		ToolCalls:    message.ToolCalls,
 		FinishReason: result.Choices[0].FinishReason,
 		LatencyMs:    time.Since(startedAt).Milliseconds(),
 		Usage: CompletionUsage{
@@ -133,6 +189,78 @@ func (c *AliyunQwenClient) Complete(ctx context.Context, prompt string) (*Comple
 		},
 		RawResponse: string(respBody),
 	}, nil
+}
+
+func normalizeMessage(msg responseMessage) (Message, error) {
+	content, err := normalizeContent(msg.Content)
+	if err != nil {
+		return Message{}, err
+	}
+
+	toolCalls := make([]ToolCall, 0, len(msg.ToolCalls))
+	for _, call := range msg.ToolCalls {
+		arguments, err := normalizeArguments(call.Function.Arguments)
+		if err != nil {
+			return Message{}, err
+		}
+
+		toolCalls = append(toolCalls, ToolCall{
+			ID:   call.ID,
+			Type: call.Type,
+			Function: FunctionCall{
+				Name:      call.Function.Name,
+				Arguments: arguments,
+			},
+		})
+	}
+
+	return Message{
+		Role:      msg.Role,
+		Content:   content,
+		ToolCalls: toolCalls,
+	}, nil
+}
+
+func normalizeContent(raw any) (string, error) {
+	switch v := raw.(type) {
+	case nil:
+		return "", nil
+	case string:
+		return v, nil
+	case []any:
+		var builder strings.Builder
+		for _, item := range v {
+			part, ok := item.(map[string]any)
+			if !ok {
+				continue
+			}
+			if text, _ := part["text"].(string); text != "" {
+				builder.WriteString(text)
+			}
+		}
+		return builder.String(), nil
+	default:
+		b, err := json.Marshal(v)
+		if err != nil {
+			return "", fmt.Errorf("解析消息 content 失败：%w", err)
+		}
+		return string(b), nil
+	}
+}
+
+func normalizeArguments(raw any) (string, error) {
+	switch v := raw.(type) {
+	case nil:
+		return "{}", nil
+	case string:
+		return v, nil
+	default:
+		b, err := json.Marshal(v)
+		if err != nil {
+			return "", fmt.Errorf("解析 tool arguments 失败：%w", err)
+		}
+		return string(b), nil
+	}
 }
 
 func normalizeChatCompletionsURL(raw string) string {
@@ -145,4 +273,13 @@ func normalizeChatCompletionsURL(raw string) string {
 		return raw
 	}
 	return raw + "/chat/completions"
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return ""
 }

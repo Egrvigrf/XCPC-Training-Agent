@@ -74,7 +74,7 @@ func NewServiceContext(ctx context.Context, c config.Config) (*ServiceContext, e
 		modelName = "deepseek-chat" // 默认值
 	}
 
-	llmClient := llm.NewAliyunQwenClient(modelName)
+	llmClient := llm.NewOpenAICompatibleClient(modelName)
 	TrainingSummaryTool := tools.NewTrainingSummaryTool(dailyModel)
 	ContestRatingSummaryTool := tools.NewContestRatingSummaryTool(contestModel)
 	TrainingDayLeaderboardTool := tools.NewTrainingDayLeaderboardTool(dailyModel, userModel)
